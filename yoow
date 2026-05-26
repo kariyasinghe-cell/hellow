@@ -1,0 +1,24 @@
+- name: Run Test Suite
+        working-directory: /workspace
+        shell: bash
+        run: |
+          mkdir -p reports
+
+          if [ ! -d tests ]; then
+            echo "::warning::tests/ directory not found — skipping test run."
+            exit 0
+          fi
+
+          collected=$(python -m pytest tests/ --collect-only -q 2>/dev/null | grep -c '::' || true)
+
+          if [ "$collected" -eq 0 ]; then
+            echo "::warning::No tests collected under tests/ — skipping test run."
+            exit 0
+          fi
+
+          echo "Collected $collected test(s). Running suite..."
+          python -m pytest tests/ \
+            --junitxml=reports/test-results.xml \
+            --cov=app \
+            --cov-report=xml:reports/coverage.xml \
+            --cov-report=term
