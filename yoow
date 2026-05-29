@@ -1,3 +1,7 @@
+grep -E '^FROM' Dockerfile | awk '{print $2}'
+
+
+
 python:3.12.13-trixie
 
 3.12.13-slim-trixie
