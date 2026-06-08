@@ -1,3 +1,83 @@
+The error is a malformed URL, not a DNS or proxy problem. Look at the endpoint apictl actually tried to hit:
+
+```
+Post "https://https//<ip_address_1>:9443/client-registration/v0.17/register"
+```
+
+There are two schemes glued together: `https://` + `https//`. Go's URL parser then treats the second `https` as the **hostname** (everything up to the next `/`), which is why it tries to resolve a host literally named `https` against your DNS server at `<ip_address_2>:53` — and that lookup "misbehaves" because `https` isn't a real host.
+
+So the DNS server isn't broken. apictl is just asking it the wrong question.
+
+How this happened: on the failing runner, the **registration (DCR) endpoint** for that environment is stored with a broken scheme — almost certainly `https//<ip_address_1>:9443` (missing the colon). Because that stored value has no valid scheme, apictl prepends `https://`, giving you `https://https//...`. The working runner has it stored correctly as `https://<ip_address_1>:9443`.
+
+The config lives in `~/.wso2apictl/main_config.yaml` (or `$APICTL_CONFIG_DIR/main_config.yaml` if you've overridden it — worth checking on a CI runner where `HOME` may differ). The fastest confirmation is to diff the two runners:
+
+```bash
+cat ~/.wso2apictl/main_config.yaml
+```
+
+You'll see the `registration` endpoint for `$APIM_ENV` is mangled on the bad runner. Fix it directly in the YAML, or just remove and re-add the env cleanly:
+
+```bash
+apictl remove env "$APIM_ENV"
+apictl add env "$APIM_ENV" \
+  --apim         "https://<ip_address_1>:9443" \
+  --registration "https://<ip_address_1>:9443" \
+  --admin        "https://<ip_address_1>:9443" \
+  --publisher    "https://<ip_address_1>:9443" \
+  --devportal    "https://<ip_address_1>:9443" \
+  --token        "https://<ip_address_1>:8243/oauth2/token"
+```
+
+(Flag names assume apictl 4.x. On 3.x it's `apictl add-env -e <name> --registration ...`.)
+
+The deeper issue is that you're relying on per-runner persisted config, which is exactly how this drift crept in — one runner got the env added with a typo at some point and it stuck. Since you're already doing reusable-workflow multi-env management, I'd make the env setup idempotent in the job itself so neither runner can drift:
+
+```bash
+apictl remove env "$APIM_ENV" 2>/dev/null || true
+apictl add env "$APIM_ENV" \
+  --apim         "https://${APIM_HOST}:9443" \
+  --registration "https://${APIM_HOST}:9443" \
+  --token        "https://${APIM_HOST}:8243/oauth2/token" \
+  ...
+apictl login "$APIM_ENV" -u "$APIM_USERNAME" -p "$APIM_PASSWORD" -k --verbose
+```
+
+That guarantees both runners construct the endpoint identically every run, and the stored config stops mattering.
+
+Unrelated to your bug but worth doing while you're in there: switch `-p "$APIM_PASSWORD"` to `--password-stdin` (e.g. `printf '%s' "$APIM_PASSWORD" | apictl login "$APIM_ENV" -u "$APIM_USERNAME" --password-stdin -k`) to silence that warning and keep the password out of the process list.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 - name: Identify runner
   run: |
     echo "Runner name:  ${{ runner.name }}"
