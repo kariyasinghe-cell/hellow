@@ -1,3 +1,30 @@
+- name: Diagnose apictl connectivity
+  if: always()
+  continue-on-error: true
+  env:
+    APIM_HOST: ${{ vars.APIM_HOST }}   # e.g. apim-sit.internal.example
+    APIM_PORT: "9443"
+  shell: bash
+  run: |
+    set +e
+    echo "::group::ping"
+    ping -c 4 "$APIM_HOST" || echo "ping failed (note: ICMP is often blocked even when TCP is open)"
+    echo "::endgroup::"
+
+    echo "::group::telnet ${APIM_HOST}:${APIM_PORT}"
+    timeout 5 telnet "$APIM_HOST" "$APIM_PORT" || echo "telnet failed/timeout"
+    echo "::endgroup::"
+
+    echo "::group::curl"
+    curl -ksS --max-time 10 -o /dev/null \
+      -w "HTTP %{http_code} in %{time_total}s\n" \
+      "https://${APIM_HOST}:${APIM_PORT}/services/Version" \
+      || echo "curl failed"
+    echo "::endgroup::"
+
+
+
+
 apictl remove env "$APIM_ENV" 2>/dev/null || true
 
 
