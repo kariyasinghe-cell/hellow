@@ -1,3 +1,7 @@
+apictl remove env "$APIM_ENV" 2>/dev/null || true
+
+
+
 The error is a malformed URL, not a DNS or proxy problem. Look at the endpoint apictl actually tried to hit:
 
 ```
