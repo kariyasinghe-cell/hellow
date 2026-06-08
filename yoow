@@ -1,3 +1,16 @@
+- name: Identify runner
+  run: |
+    echo "Runner name:  ${{ runner.name }}"
+    echo "OS / Arch:    ${{ runner.os }} / ${{ runner.arch }}"
+    echo "Environment:  ${{ runner.environment }}"   # 'github-hosted' or 'self-hosted'
+    echo "Hostname:     $(hostname -f)"
+    echo "RUNNER_NAME:  $RUNNER_NAME"
+    echo "Workdir:      $RUNNER_WORKSPACE"
+    echo "Whoami:       $(whoami)@$(hostname)"
+
+
+
+
 grep -E '^FROM' Dockerfile | awk '{print $2}'
 
 
