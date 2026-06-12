@@ -1,3 +1,24 @@
+systeminfo | Select-String "Processor", "Total Physical Memory"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 - name: Upload surefire reports
         if: failure()
         uses: actions/upload-artifact@v4
